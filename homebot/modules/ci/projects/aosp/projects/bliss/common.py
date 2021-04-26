@@ -1,0 +1,6 @@
+name = "bliss"
+category = "ROMs"
+lunch_prefix = "bliss"
+lunch_suffix = "userdebug"
+build_target = "blissify"
+artifacts = "BlissROM-*.zip"

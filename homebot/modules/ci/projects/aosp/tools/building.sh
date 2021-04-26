@@ -44,9 +44,22 @@ while [ "${#}" -gt 0 ]; do
 			CI_DEVICE="${2}"
 			shift
 			;;
+		--myfnc )
+			SYNC="${2}"
+			shift
+			;;
 	esac
 	shift
 done
+
+if [ "$SYNC" == "dt" ]; then
+ bash -c "cd device/xiaomi/raphael && git pull" 2>&1 | tee build_log.txt
+ CI_BUILD_STATUS=$?
+ if [ ${CI_BUILD_STATUS} != 0 ]; then
+ 	exit "${BUILD_FAILED}"
+ fi
+	exit "${SUCCESS}"
+fi
 
 if [ "${CI_DEVICE}" = "" ]; then
 	exit "${MISSING_ARGS}"
@@ -58,6 +71,12 @@ fi
 
 cd "${CI_SOURCES}"
 . build/envsetup.sh
+
+if [ "$SYNC" == "dt" ]; then
+	echo "TEST"
+	sleep 20
+	exit "${SUCCESS}"
+fi
 
 lunch "${CI_LUNCH_PREFIX}_${CI_DEVICE}-${CI_LUNCH_SUFFIX}" &> lunch_log.txt
 CI_LUNCH_STATUS=$?

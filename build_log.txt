@@ -1,0 +1,1 @@
+bash: linia 1: cd: device/xiaomi/raphael: Nie ma takiego pliku ani katalogu

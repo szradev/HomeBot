@@ -8,6 +8,7 @@ from homebot.modules.ci.projects.aosp.post import update_ci_post
 from homebot.modules.ci.projects.aosp.project import AOSPProject
 from homebot.modules.ci.projects.aosp.returncode import SUCCESS, ERROR_CODES, NEEDS_LOGS_UPLOAD
 from homebot.modules.ci.upload import Uploader
+from homebot.core.logging import LOGE, LOGI
 from importlib import import_module
 from pathlib import Path
 import re
@@ -23,7 +24,8 @@ def ci_build(update: Update, context: CallbackContext):
 	parser.add_argument('device', help='device codename')
 	parser.add_argument('-ic', '--installclean', help='make installclean before building', action='store_true')
 	parser.add_argument('-c', '--clean', help='make clean before building', action='store_true')
-	parser.set_defaults(clean=False, installclean=False)
+	parser.add_argument('-dt', '--dt', help='sync dt and vendor before bulding', action='store_true')
+	parser.set_defaults(clean=False, installclean=False, dt=False)
 
 	try:
 		args_passed = update.message.text.split(' ', 2)[2].split()
@@ -36,8 +38,11 @@ def ci_build(update: Update, context: CallbackContext):
 	project: AOSPProject
 	project = import_module(f"homebot.modules.ci.projects.aosp.projects.{args.project}", package="*").project
 
-	project_dir = Path(f"{get_config('CI_MAIN_DIR')}/{project.name}-{project.version}")
+	project_dir = Path(f"{get_config('CI_MAIN_DIR')}/{project.name}")
 	device_out_dir = project_dir / "out" / "target" / "product" / args.device
+
+	if args.dt is True:
+		dt_type = "dt"
 
 	if args.clean is True:
 		clean_type = "clean"
@@ -46,7 +51,10 @@ def ci_build(update: Update, context: CallbackContext):
 	else:
 		clean_type = "none"
 
-	message_id = update_ci_post(context, None, project, args.device, "Building")
+	if args.dt is True:
+		message_id = update_ci_post(context, None, project, args.device, "Syncing DT")
+	else:
+		message_id = update_ci_post(context, None, project, args.device, "Building")
 
 	command = [bot_path / "modules" / "ci" / "projects" / "aosp" / "tools" / "building.sh",
 			   "--sources", project_dir,
@@ -54,7 +62,12 @@ def ci_build(update: Update, context: CallbackContext):
 			   "--lunch_suffix", project.lunch_suffix,
 			   "--build_target", project.build_target,
 			   "--clean", clean_type,
+			   "--myfnc", dt_type,
 			   "--device", args.device]
+	print(str(command))
+	LOGI(str(args.dt))
+	LOGI(args.dt)
+
 
 	last_edit = datetime.now()
 	process = subprocess.Popen(command, encoding="UTF-8",
@@ -78,6 +91,8 @@ def ci_build(update: Update, context: CallbackContext):
 			continue
 
 		percentage, targets = re.split(" +", result.group(1))
+
+
 		update_ci_post(context, message_id, project, args.device,
 					   f"Building: {percentage} ({targets})")
 
